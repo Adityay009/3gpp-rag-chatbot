@@ -61,10 +61,19 @@ def _verify_answer(query: str, answer: str, context: str) -> bool:
     """Second-pass entailment check: is the answer actually supported by the
     context, or did the model drift/embellish? Returns True if supported."""
     model = genai.GenerativeModel(settings.gemini_model)
-    verify_prompt = f"""You are a strict fact-checker. Given the CONTEXT and an ANSWER that claims to be \
-derived from it, respond with exactly one word: "SUPPORTED" if every claim in the \
-answer is directly backed by the context, or "UNSUPPORTED" if the answer contains \
-any claim, number, or clause reference not present in the context.
+    verify_prompt = f"""You are a fact-checker reviewing whether an ANSWER is faithfully grounded in \
+the given CONTEXT.
+
+Paraphrasing, summarizing, and rewording are all considered SUPPORTED as long \
+as the meaning is preserved and no new specific facts, numbers, names, \
+thresholds, or claims are introduced beyond what the context actually states.
+
+Respond "UNSUPPORTED" only if the answer contains a specific fact, number, \
+name, threshold, or claim that does NOT appear anywhere in the context, even \
+in different words.
+
+Respond "SUPPORTED" if the answer is a faithful paraphrase or summary of the \
+context, even if wording differs.
 
 CONTEXT:
 {context}
@@ -72,7 +81,7 @@ CONTEXT:
 ANSWER:
 {answer}
 
-Respond with exactly one word."""
+Respond with exactly one word: SUPPORTED or UNSUPPORTED."""
     try:
         resp = model.generate_content(verify_prompt)
         verdict = (resp.text or "").strip().upper()

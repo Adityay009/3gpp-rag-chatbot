@@ -3,6 +3,4 @@ __pycache__/
 *.pyc
 .env
 data/*.pdf
-index/faiss.index
-index/chunks.json
 .DS_Store

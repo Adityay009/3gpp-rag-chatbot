@@ -3,7 +3,7 @@ services:
     name: 3gpp-rag-chatbot
     env: python
     plan: free
-    buildCommand: "pip install -r requirements.txt && python scripts/download_spec.py && python -m app.ingest --pdf data/ts_123501.pdf --doc-id '3GPP TS 23.501' --version '18.5.0'"
+    buildCommand: "pip install -r requirements.txt"
     startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: GOOGLE_API_KEY

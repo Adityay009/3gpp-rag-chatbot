@@ -62,8 +62,12 @@ python scripts/download_spec.py
 # 2. Build the index (clause chunking + embedding + FAISS)
 python -m app.ingest --pdf data/ts_123501.pdf --doc-id "3GPP TS 23.501" --version "18.5.0"
 
-# 3. Set your Gemini API key
+# 3. Set your Gemini API key and model
 export GOOGLE_API_KEY=your_key_here
+# Note: Google periodically deprecates older model names (e.g. gemini-1.5-flash
+# was retired). If GEMINI_MODEL in .env 404s, check ai.google.dev for the current
+# stable flash model name, or use the "gemini-flash-latest" alias which always
+# points at Google's current recommended flash model.
 
 # 4. Run
 uvicorn app.main:app --reload
@@ -94,12 +98,29 @@ Response:
 }
 ```
 
-## Example: a refusal in action
+## Refusal behavior: two different kinds of "not in scope"
 
-Asking something outside the corpus (e.g. "What's the price of a Cisco 5G core
-license?") returns a refusal rather than an invented answer, since nothing in the
-retrieved chunks clears the confidence threshold — demonstrating the near-zero
-hallucination behavior explicitly rather than just claiming it.
+Testing surfaced two distinct refusal cases worth calling out explicitly:
+
+**Trivially out-of-scope** — e.g. "What's the price of a Cisco 5G core license?"
+or "Explain the plot of Titanic." Nothing in the corpus is remotely relevant, so
+retrieval confidence is near zero and the bot refuses immediately.
+
+**Related-but-not-actually-connected topics** — e.g. "What happens to MICO mode
+during a handover to satellite access?" Both MICO mode (clause 5.4.1.3) and
+satellite/NR non-terrestrial access (clause 5.4.13.x) are covered separately in
+the spec, but TS 23.501 does not actually cross-reference the two. The bot
+refuses here too, rather than synthesizing a plausible-sounding bridge between
+two adjacent-but-unconnected clauses. As a control, asking about either topic
+individually (e.g. "How does the AMF determine paging assistance information for
+NR satellite access?") returns a fully grounded, cited answer — confirming the
+refusal on the combined question reflects an actual gap in the source document,
+not a retrieval failure.
+
+This second case is the more meaningful of the two: it's easy for a RAG system
+to refuse when nothing matches, but harder to correctly refuse when two
+individually-relevant topics get pulled into context and the model has to resist
+the temptation to connect them without textual support.
 
 ## Tuning knobs (`app/config.py`)
 

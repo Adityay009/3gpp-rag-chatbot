@@ -98,6 +98,31 @@ Response:
 }
 ```
 
+## Verification pass: catching a bug in the guardrail itself
+
+The independent verification pass (`_verify_answer` in `app/generation.py`) was
+tested directly with `tests/test_verification.py` rather than just trusted to
+work — and this actually surfaced a real bug in the first version of the
+verification prompt: it was so strict that it flagged **faithful paraphrases**
+as "unsupported," not just fabricated claims. A correct answer that reworded
+the source clause (rather than repeating it near-verbatim) was being rejected,
+which would have caused the bot to falsely refuse answers it had actually
+gotten right.
+
+The fix: the verification prompt now explicitly distinguishes paraphrase (which
+preserves meaning without adding new facts, and should pass) from fabrication
+(which introduces specific facts, numbers, or claims not present in the
+context, and should fail). After the fix, both cases behave correctly:
+
+| Input | Before fix | After fix |
+|---|---|---|
+| Faithful paraphrase of Clause 5.4.1.3 | UNSUPPORTED (false positive) | SUPPORTED |
+| Same answer with fabricated timer/signal-strength values injected | UNSUPPORTED | UNSUPPORTED |
+
+This is included here deliberately: it's more convincing evidence that the
+hallucination-mitigation layers are doing real work than only showing cases
+where everything worked on the first try.
+
 ## Refusal behavior: two different kinds of "not in scope"
 
 Testing surfaced two distinct refusal cases worth calling out explicitly:
